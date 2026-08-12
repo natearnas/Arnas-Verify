@@ -1,0 +1,16 @@
+{
+  "algorithm": "RSA-PSS-SHA256",
+  "payload": {
+    "app_id": "demo_app",
+    "customer": "Demo Customer",
+    "expires_at": "2100-01-01T00:00:00Z",
+    "features": {
+      "seats": 1,
+      "tier": "trial"
+    },
+    "issued_at": "2026-08-12T13:19:29Z",
+    "nonce": "EV8zJW3KPau7eCFf-_A0-w"
+  },
+  "signature": "T1g+aZs2kDCdlUf1NDIeXWaPJzM0C84zOr1lIQvG/pzNY/p0AyLUTr7uNc3sK9RVc+fn9lIkj9eGCAhs2h0yUs12Y5ZS6sAJjSCsIyEA2DP8jBW3QBs24Vwqo6jQiiurHq9btk9+UKPWyR7eCDuGoUVAeRRH3L0qgmy0MK2bS8XfeJiELBPnnEPmINJhYTAtSAxi+4XX3ff1jlrJcDS23XNj9PLBQLkd7KknG/V3D69CFR6GA2nunjSD+WYEpLQ8eOc2+R8RpUR14kua1wHORCpKL5SBnP7NN+z6Kh0wdoL+3m1qaHiir4yQrF4baj0Hp6+A+dVCfvqaYwetCv8OBg==",
+  "version": 1
+}

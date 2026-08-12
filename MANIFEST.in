@@ -1,0 +1,8 @@
+# The sdist must be self-consistent: the shipped tests need their fixtures
+# (tests/conftest.py) and the demo material they resolve (demo_keys/), and the
+# README quick start references examples/ and scripts/.
+include tests/conftest.py
+graft demo_keys
+graft examples
+graft scripts
+global-exclude __pycache__ *.pyc

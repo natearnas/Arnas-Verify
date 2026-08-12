@@ -1,5 +1,7 @@
 # Arnas Verify
 
+[![Tests](https://github.com/natearnas/Arnas-Verify/actions/workflows/test.yml/badge.svg)](https://github.com/natearnas/Arnas-Verify/actions/workflows/test.yml)
+
 A **reference implementation** of local, offline, signed per-application
 license verification in Python. Educational and verifier-side only: this repo
 shows how a desktop application can validate a signed JSON license file

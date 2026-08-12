@@ -208,6 +208,40 @@ first, then machine-wide:
 
 Default filename: `license.json`.
 
+## Deployment hardening
+
+Arnas Verify is the **verifier protocol**. A shipping product should add
+operational hardening around it. Recommended practices:
+
+1. **Embed the public key at build time.** Do not ship a loose
+   `public_key.pem` beside the executable that users can swap. Inject the PEM
+   (or a derived form) into the build — e.g. a generated source module, a
+   resource compiled into a native library, or an equivalent bake-step — so
+   the trust root travels inside the signed binary. The private key never
+   enters that build.
+2. **Keep the signing private key offline.** Generate it in a private
+   issuance environment; store it encrypted or in an HSM; back it up;
+   never commit it; never put it in the customer install. The machine-ID
+   **hash algorithm is not a secret** — knowing it does not forge licenses.
+   The private key is the secret.
+3. **Prefer native (or otherwise hard-to-patch) verification in release
+   builds.** A pure-Python check is fine for this reference and for
+   development. Production desktop apps often move signature + machine
+   checks into a native library and gate paid features behind a successful
+   verify, so casual binary edits are harder.
+4. **Code-sign the installer and binaries** so OS trust and update channels
+   match the key you embedded at build time.
+5. **Run an issuer-side ledger** (customer, product, `machine_id`, serial,
+   issue date). This repo does not store that data; you do. Use it for
+   reissues after hardware changes and to spot abusive reissue patterns.
+6. **Optional online revocation** is a product choice, not part of this
+   offline reference. Without a network path you cannot revoke before
+   expiry; with one you can, at the cost of privacy and ops complexity.
+
+What offline local licensing **cannot** fully stop: a determined attacker
+with admin rights and a debugger. The design targets honest users and
+casual license sharing — appropriate for most scientific desktop software.
+
 ## Threat model and limitations
 
 Offline verification stops:
@@ -226,7 +260,8 @@ It cannot stop, by design:
 - **Central license inventory** — no built-in customer ledger in this repo.
 - **Revocation** before expiry without a network path.
 
-Treat local verification as an honest-user convention, not DRM. The demo
+Treat local verification as an honest-user convention, not DRM. See
+**Deployment hardening** above for how real products raise the bar. The demo
 keypair is intentionally public and trust-free; see [SECURITY.md](SECURITY.md).
 
 ## Development

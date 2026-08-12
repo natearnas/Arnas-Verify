@@ -13,9 +13,11 @@ Because the private key is public:
 - Never reuse this keypair anywhere outside this repository's demos.
 
 A real deployment generates its own keypair inside a private signing
-authority, keeps the private key there, and embeds only its *own* public key
-in the shipped application. That production authority is a separate, private
-project and is deliberately not part of this repository.
+authority, keeps the private key there, and **embeds only its own public key
+into the shipped application at build time** (injected into the binary or a
+native library — not a user-swappable PEM next to the EXE). That production
+authority is a separate, private project and is deliberately not part of this
+repository. See the README section **Deployment hardening**.
 
 To regenerate the demo keypair (and then re-sign the example license):
 

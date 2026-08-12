@@ -24,6 +24,13 @@ This is deliberately **not**:
 - A production signing authority. Real issuance (private keys, customer
   ledger, signing service) lives in a separate **private** project and is not
   part of this repository.
+- A license **issuance** or **entitlement-management** system. Arnas Verify
+  does not record licenses issued, customers, seat counts, or device
+  identifiers (machine / host IDs). Issuers keep that ledger themselves — in
+  their own CRM, database, or tooling built around signing — separate from
+  this verifier.
+- A GUI or operator console for creating and signing licenses. Those belong
+  in a private issuance workflow, not in this reference verifier.
 - A remote activation system. There is no server, no telemetry, no network
   code anywhere in this package.
 
@@ -267,6 +274,11 @@ It cannot stop, by design:
 - **Clock rollback** — expiry enforcement trusts the system clock.
 - **License copying** — a valid license file works on any machine; there is
   no machine binding here.
+- **Device binding / host locking** — payloads are not tied to a computer
+  identifier; association of licenses with devices is an issuer-side concern
+  outside this repository.
+- **Central license inventory** — there is no built-in registry of who was
+  issued what, or which devices are associated with a license.
 - **Revocation** — with no network there is no way to revoke an issued
   license before it expires.
 

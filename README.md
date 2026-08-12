@@ -4,7 +4,9 @@ A **reference implementation** of local, offline, signed per-application
 license verification in Python. Educational and verifier-side only: this repo
 shows how a desktop application can validate a signed JSON license file
 against an embedded public key — enforcing signature integrity, app binding,
-and expiry — without any network access.
+and expiry — without any network access. Arnas Verify is published by
+[Arnas Technologies](https://arnastech.com), maker of scientific imaging
+software.
 
 ## What this is — and deliberately is not
 
@@ -217,6 +219,14 @@ scripts/            demo license regeneration
 tests/              pytest suite (crypto, validation, CLI, locations)
 ```
 
-## License
+## Licensing
 
-MIT — see [LICENSE](LICENSE).
+Arnas Verify is free for **noncommercial use** — including academic research,
+teaching, personal projects, and evaluation — under the
+[PolyForm Noncommercial License 1.0.0](LICENSE).
+
+**Commercial use requires a separate license** from Arnas Technologies, LLC.
+See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) and get in touch via
+<https://arnastech.com>.
+
+This summary is informational, not legal advice; the license text governs.

@@ -2,12 +2,12 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "Arnas Verify"
-abstract: "Reference implementation of local, offline, signed per-application license verification in Python."
+abstract: "Reference implementation of local, offline, machine-bound signed license verification in Python."
 authors:
   - family-names: "O'Connor"
     given-names: "Nathan J."
     affiliation: "Arnas Technologies, LLC"
-version: 0.1.0
+version: 0.2.0
 date-released: "2026-08-12"
 repository-code: "https://github.com/natearnas/Arnas-Verify"
 url: "https://arnastech.com"

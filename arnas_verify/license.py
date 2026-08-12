@@ -1,16 +1,17 @@
 """Verification side of the Arnas Verify reference licensing scheme.
 
-This module is the part a product would ship: it loads a signed license
-document (JSON), verifies its RSA-PSS-SHA256 signature against a trusted
-public key, and enforces app binding, expiry, and structural validation.
+Protocol (aligned with Arnas Technologies desktop product licensing)
+--------------------------------------------------------------------
+A license is a flat JSON object. The issuer signs every field except
+``signature`` with RSA-PSS-SHA256 (PSS salt length = 32). The shipped
+application verifies the signature with an embedded public key, then enforces
+``product`` binding, ``machine_id`` binding, and calendar expiry.
 
 Public/private split
 --------------------
-This public repository deliberately contains no production trust material.
-The demo issuance helpers live in :mod:`arnas_verify.demo_issuance` and exist
-only so the examples and tests can produce signed documents. The real signing
-authority (private keys, customer ledger, issuance flow) is a separate,
-private project and is not part of this codebase.
+This public repository contains no production trust material. Demo issuance
+helpers live in :mod:`arnas_verify.demo_issuance`. Real private keys, customer
+ledgers, and operator GUIs stay in a separate private project.
 """
 
 from __future__ import annotations
@@ -18,29 +19,34 @@ from __future__ import annotations
 import base64
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-#: Envelope version this verifier accepts.
-LICENSE_VERSION = 1
+from .machine import get_machine_id, is_plausible_machine_id
 
-#: Signature algorithm this verifier accepts.
+#: Signature algorithm this verifier accepts (documented; not a signed field).
 LICENSE_ALGORITHM = "RSA-PSS-SHA256"
 
-#: Timestamps in license payloads must use this exact UTC format.
-TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+#: PSS salt length used by the issuer and accepted by this verifier.
+PSS_SALT_LENGTH = 32
 
-#: Tolerance applied to the issued_at check so a freshly issued license is
-#: not rejected when the authority's clock is slightly ahead of this machine.
-ISSUED_AT_LEEWAY = timedelta(minutes=5)
+#: Expiration dates use this calendar form (UTC date, no time component).
+EXPIRES_FORMAT = "%Y-%m-%d"
 
-_REQUIRED_STRING_FIELDS = ("app_id", "issued_at", "expires_at", "customer", "nonce")
-_REQUIRED_FIELDS = _REQUIRED_STRING_FIELDS + ("features",)
+_REQUIRED_STRING_FIELDS = (
+    "product",
+    "licensee",
+    "email",
+    "license_type",
+    "expires",
+    "machine_id",
+)
+_OPTIONAL_STRING_FIELDS = ("key_id", "organization")
 
 
 class LicenseError(ValueError):
@@ -49,53 +55,74 @@ class LicenseError(ValueError):
 
 @dataclass
 class LicenseDocument:
-    """The signed portion of a license: the claims the authority vouches for."""
+    """The signed claims in a license (everything except ``signature``)."""
 
-    app_id: str
-    issued_at: str
-    expires_at: str
-    customer: str
-    features: Dict[str, Any]
-    nonce: str
+    product: str
+    licensee: str
+    email: str
+    license_type: str
+    expires: str
+    machine_id: str
+    features: List[Any]
+    key_id: Optional[str] = None
+    organization: Optional[str] = None
 
     @staticmethod
     def from_dict(payload: Dict[str, Any]) -> "LicenseDocument":
-        """Build a document from a payload dict, enforcing shape and types.
-
-        Raises:
-            LicenseError: if the payload is not an object, a required field is
-                missing, a string field is not a string, or ``features`` is
-                not an object.
-        """
         if not isinstance(payload, dict):
             raise LicenseError("payload must be a JSON object")
-        missing = [name for name in _REQUIRED_FIELDS if name not in payload]
+        missing = [name for name in _REQUIRED_STRING_FIELDS if name not in payload]
         if missing:
             raise LicenseError(f"missing required fields: {', '.join(missing)}")
+        if "features" not in payload:
+            raise LicenseError("missing required fields: features")
         for name in _REQUIRED_STRING_FIELDS:
             if not isinstance(payload[name], str):
                 raise LicenseError(f"field '{name}' must be a string")
-        if not isinstance(payload["features"], dict):
-            raise LicenseError("field 'features' must be an object")
+        if not isinstance(payload["features"], list):
+            raise LicenseError("field 'features' must be an array")
+        for name in _OPTIONAL_STRING_FIELDS:
+            if name in payload and payload[name] is not None:
+                if not isinstance(payload[name], str):
+                    raise LicenseError(f"field '{name}' must be a string")
+        if not is_plausible_machine_id(payload["machine_id"]):
+            raise LicenseError(
+                "field 'machine_id' must be a 32- or 64-character lowercase hex fingerprint"
+            )
+        try:
+            datetime.strptime(payload["expires"], EXPIRES_FORMAT).date()
+        except ValueError as exc:
+            raise LicenseError(
+                f"field 'expires' must be YYYY-MM-DD, got {payload['expires']!r}"
+            ) from exc
         return LicenseDocument(
-            app_id=payload["app_id"],
-            issued_at=payload["issued_at"],
-            expires_at=payload["expires_at"],
-            customer=payload["customer"],
-            features=payload["features"],
-            nonce=payload["nonce"],
+            product=payload["product"],
+            licensee=payload["licensee"],
+            email=payload["email"],
+            license_type=payload["license_type"],
+            expires=payload["expires"],
+            machine_id=payload["machine_id"],
+            features=list(payload["features"]),
+            key_id=payload.get("key_id"),
+            organization=payload.get("organization"),
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Return the payload dict in the shape that gets signed."""
-        return {
-            "app_id": self.app_id,
-            "issued_at": self.issued_at,
-            "expires_at": self.expires_at,
-            "customer": self.customer,
-            "features": self.features,
-            "nonce": self.nonce,
+        """Return the unsigned payload dict in the shape that gets signed."""
+        payload: Dict[str, Any] = {
+            "product": self.product,
+            "licensee": self.licensee,
+            "email": self.email,
+            "license_type": self.license_type,
+            "expires": self.expires,
+            "machine_id": self.machine_id,
+            "features": list(self.features),
         }
+        if self.key_id is not None:
+            payload["key_id"] = self.key_id
+        if self.organization is not None:
+            payload["organization"] = self.organization
+        return payload
 
 
 @dataclass(frozen=True)
@@ -121,42 +148,20 @@ def _fail(reason: str) -> VerificationResult:
 
 
 def canonical_json(payload: Dict[str, Any]) -> bytes:
-    """Serialize a payload in the canonical form that is signed and verified.
-
-    The convention is compact separators, lexicographically sorted keys,
-    UTF-8 encoding, and strictly finite numbers (no NaN/Infinity, which are
-    not valid JSON). Payloads must be JSON-native data with string keys.
-    Signer and verifier must both use this exact form; it is defined here,
-    in one place, so they cannot drift apart.
-    """
+    """Serialize a payload in the canonical form that is signed and verified."""
     return json.dumps(
         payload, separators=(",", ":"), sort_keys=True, allow_nan=False
     ).encode("utf-8")
 
 
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _parse_timestamp(value: str) -> datetime:
-    parsed = datetime.strptime(value, TIMESTAMP_FORMAT).replace(tzinfo=timezone.utc)
-    # strptime tolerates 1-digit fields; require the exact documented form.
-    if parsed.strftime(TIMESTAMP_FORMAT) != value:
-        raise ValueError(f"timestamp not in exact format: {value!r}")
-    return parsed
-
-
-def _reject_nonfinite(token: str) -> Any:
-    raise ValueError(f"non-finite JSON token not allowed: {token}")
+def unsigned_payload(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of ``doc`` without the ``signature`` field."""
+    payload = dict(doc)
+    payload.pop("signature", None)
+    return payload
 
 
 def _load_public_key(path: str | Path) -> rsa.RSAPublicKey:
-    """Load the trusted RSA public key.
-
-    Problems here (missing file, corrupt PEM, non-RSA key) are deployment
-    errors in the verifying application, not untrusted input, so they raise
-    instead of returning a failed :class:`VerificationResult`.
-    """
     data = Path(path).read_bytes()
     key = serialization.load_pem_public_key(data)
     if not isinstance(key, rsa.RSAPublicKey):
@@ -164,34 +169,15 @@ def _load_public_key(path: str | Path) -> rsa.RSAPublicKey:
     return key
 
 
-def _check_envelope_and_signature(
-    doc: Any, public_key_path: str | Path
-) -> VerificationResult:
-    """Check the envelope shape, version, algorithm, and signature.
-
-    The signature is verified before the payload is interpreted in any way;
-    everything after this gate operates on authenticated data only.
-    """
+def _check_signature(doc: Any, public_key_path: str | Path) -> VerificationResult:
+    """Verify document shape and cryptographic signature only."""
     if not isinstance(doc, dict):
         return _fail("malformed document: not a JSON object")
-    payload = doc.get("payload")
     signature = doc.get("signature")
-    if not isinstance(payload, dict):
-        return _fail("malformed document: 'payload' must be an object")
     if not isinstance(signature, str):
         return _fail("malformed document: 'signature' must be a string")
-    version = doc.get("version")
-    # Exact int comparison: bool/float equal-comparing to 1 must not pass.
-    if (
-        not isinstance(version, int)
-        or isinstance(version, bool)
-        or version != LICENSE_VERSION
-    ):
-        return _fail(f"unsupported version: {version!r}")
-    algorithm = doc.get("algorithm")
-    if algorithm != LICENSE_ALGORITHM:
-        return _fail(f"unsupported algorithm: {algorithm!r}")
 
+    payload = unsigned_payload(doc)
     public_key = _load_public_key(public_key_path)
     try:
         sig = base64.b64decode(signature.encode("ascii"), validate=True)
@@ -206,7 +192,8 @@ def _check_envelope_and_signature(
             sig,
             raw,
             padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=PSS_SALT_LENGTH,
             ),
             hashes.SHA256(),
         )
@@ -216,99 +203,107 @@ def _check_envelope_and_signature(
 
 
 def check_license_document(
-    doc: Dict[str, Any], *, public_key_path: str | Path, app_id: str
+    doc: Dict[str, Any],
+    *,
+    public_key_path: str | Path,
+    product: str,
+    machine_id: Optional[str] = None,
 ) -> VerificationResult:
-    """Fully validate a signed license document for one application.
+    """Fully validate a signed license for one product on one machine.
 
-    Check order: envelope shape, version, algorithm, signature, payload
-    structure, app binding, timestamp format, not-yet-issued (with a small
-    clock-skew leeway, :data:`ISSUED_AT_LEEWAY`), not-expired. Returns a
-    :class:`VerificationResult` whose ``reason`` names the first failed
-    check.
-
-    Raises:
-        OSError, ValueError, TypeError: if the public key itself cannot be
-            loaded (deployment error, not untrusted input).
+    Check order: signature, payload structure, product binding, machine
+    binding, not-expired. ``machine_id`` defaults to :func:`get_machine_id`.
     """
-    result = _check_envelope_and_signature(doc, public_key_path)
+    result = _check_signature(doc, public_key_path)
     if not result:
         return result
 
     try:
-        document = LicenseDocument.from_dict(doc["payload"])
+        document = LicenseDocument.from_dict(unsigned_payload(doc))
     except LicenseError as exc:
         return _fail(f"invalid payload: {exc}")
 
-    if document.app_id != app_id:
+    if document.product != product:
         return _fail(
-            f"app_id mismatch: expected '{app_id}', got '{document.app_id}'"
+            f"product mismatch: expected '{product}', got '{document.product}'"
         )
 
-    try:
-        issued_dt = _parse_timestamp(document.issued_at)
-        expires_dt = _parse_timestamp(document.expires_at)
-    except ValueError:
+    current_id = machine_id if machine_id is not None else get_machine_id()
+    if document.machine_id != current_id:
         return _fail(
-            "invalid timestamp format: expected YYYY-MM-DDTHH:MM:SSZ (UTC)"
+            "machine_id mismatch: "
+            f"license '{document.machine_id}', this machine '{current_id}'"
         )
 
-    now = _utc_now()
-    if issued_dt > now + ISSUED_AT_LEEWAY:
-        return _fail("issued_at is in the future")
-    if now > expires_dt:
-        return _fail(f"license expired at {document.expires_at}")
+    expires = datetime.strptime(document.expires, EXPIRES_FORMAT).date()
+    if date.today() > expires:
+        return _fail(f"license expired on {document.expires}")
 
     return _VALID
 
 
 def check_license_file(
-    path: str | Path, public_key_path: str | Path, *, app_id: str
+    path: str | Path,
+    public_key_path: str | Path,
+    *,
+    product: str,
+    machine_id: Optional[str] = None,
 ) -> VerificationResult:
-    """Load a license file and fully validate it for one application.
-
-    Unreadable or non-JSON license files are untrusted input and produce a
-    failed result with a reason; public-key problems raise (see
-    :func:`check_license_document`).
-    """
+    """Load a license file and fully validate it."""
     try:
-        # utf-8-sig also accepts a UTF-8 BOM, which Windows editors add.
         text = Path(path).read_bytes().decode("utf-8-sig")
     except OSError as exc:
         return _fail(f"cannot read license file: {exc}")
     except UnicodeDecodeError:
         return _fail("license file is not valid UTF-8")
     try:
-        doc = json.loads(text, parse_constant=_reject_nonfinite)
+        doc = json.loads(text)
     except (ValueError, RecursionError):
         return _fail("license file is not valid JSON")
-    return check_license_document(doc, public_key_path=public_key_path, app_id=app_id)
+    return check_license_document(
+        doc,
+        public_key_path=public_key_path,
+        product=product,
+        machine_id=machine_id,
+    )
 
 
 def verify_license_document(doc: Dict[str, Any], public_key_path: str | Path) -> bool:
-    """Check only the envelope and cryptographic signature of a document.
-
-    This deliberately skips app binding, expiry, and payload validation —
-    use :func:`check_license_document` (or :func:`validate_license_document`)
-    for a full check.
-    """
-    return bool(_check_envelope_and_signature(doc, public_key_path))
+    """Check only the cryptographic signature (no product/machine/expiry)."""
+    return bool(_check_signature(doc, public_key_path))
 
 
 def validate_license_document(
-    doc: Dict[str, Any], *, public_key_path: str | Path, app_id: str
+    doc: Dict[str, Any],
+    *,
+    public_key_path: str | Path,
+    product: str,
+    machine_id: Optional[str] = None,
 ) -> bool:
     """Boolean form of :func:`check_license_document`."""
     return bool(
-        check_license_document(doc, public_key_path=public_key_path, app_id=app_id)
+        check_license_document(
+            doc,
+            public_key_path=public_key_path,
+            product=product,
+            machine_id=machine_id,
+        )
     )
 
 
 def verify_license_file(
-    path: str | Path, public_key_path: str | Path, *, app_id: str
+    path: str | Path,
+    public_key_path: str | Path,
+    *,
+    product: str,
+    machine_id: Optional[str] = None,
 ) -> bool:
-    """Boolean form of :func:`check_license_file`.
-
-    ``app_id`` is required: file-level verification always enforces app
-    binding and expiry, so a valid signature alone never passes.
-    """
-    return bool(check_license_file(path, public_key_path, app_id=app_id))
+    """Boolean form of :func:`check_license_file`."""
+    return bool(
+        check_license_file(
+            path,
+            public_key_path,
+            product=product,
+            machine_id=machine_id,
+        )
+    )

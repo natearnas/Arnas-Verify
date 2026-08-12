@@ -1,16 +1,13 @@
 {
-  "algorithm": "RSA-PSS-SHA256",
-  "payload": {
-    "app_id": "demo_app",
-    "customer": "Demo Customer",
-    "expires_at": "2100-01-01T00:00:00Z",
-    "features": {
-      "seats": 1,
-      "tier": "trial"
-    },
-    "issued_at": "2026-08-12T13:19:29Z",
-    "nonce": "EV8zJW3KPau7eCFf-_A0-w"
-  },
-  "signature": "T1g+aZs2kDCdlUf1NDIeXWaPJzM0C84zOr1lIQvG/pzNY/p0AyLUTr7uNc3sK9RVc+fn9lIkj9eGCAhs2h0yUs12Y5ZS6sAJjSCsIyEA2DP8jBW3QBs24Vwqo6jQiiurHq9btk9+UKPWyR7eCDuGoUVAeRRH3L0qgmy0MK2bS8XfeJiELBPnnEPmINJhYTAtSAxi+4XX3ff1jlrJcDS23XNj9PLBQLkd7KknG/V3D69CFR6GA2nunjSD+WYEpLQ8eOc2+R8RpUR14kua1wHORCpKL5SBnP7NN+z6Kh0wdoL+3m1qaHiir4yQrF4baj0Hp6+A+dVCfvqaYwetCv8OBg==",
-  "version": 1
+  "email": "demo@example.com",
+  "expires": "2100-01-01",
+  "features": [
+    "tier:trial"
+  ],
+  "key_id": "v1",
+  "license_type": "trial",
+  "licensee": "Demo Customer",
+  "machine_id": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "product": "demo_app",
+  "signature": "KMOEzEUltFIGdBzXMBBUY9CGccgeLQZ0yfiwQlfmFSJ8+6CpvfleeckaNdRpyD9k8jCKZyDEB+KrYU68/8MTZA7cl231X/Mq+m5TrzcfmR2ygCNQbrOVktStLHDw5G3oNpMKz2X0SKfItljThFdrDSupe3o0F+es0XHaPz9huBEO5Ek55jqLWy5Dtwr83jwiOayQdNsoBo+nHuCLjI5BNfqC/9GepqyHcVygc1hFKrmX67A6XRcqG2fnNWO4SPAjg8V9EqiydpysOIlr6lxoL0Mod3g+l1isPm0HY5YdMFZHmUSKYE4WLqdrWSUX6toWn9FYkzq78P3rt0I7R6zD9w=="
 }

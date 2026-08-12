@@ -2,39 +2,30 @@
 
 DEMO ONLY — NOT A PRODUCTION TRUST ROOT.
 
-Production issuance (real private keys, customer ledger, signing service)
-lives in a separate PRIVATE signing authority and is deliberately not part of
-this repository. This module exists so the examples and tests can produce
-signed documents with the intentionally committed demo keypair under
-``demo_keys/``. Never ship the demo private key, never accept licenses signed
-by it in a real product, and never treat these helpers as the production
-issuance flow.
-
-These helpers are intentionally not re-exported from the top-level
-``arnas_verify`` package: any call site that issues licenses must import
-``arnas_verify.demo_issuance`` explicitly, which keeps the verification-only
-public API honest.
+Builds and signs flat license documents in the same shape used by Arnas
+Technologies desktop products: RSA-PSS-SHA256 with PSS salt length 32 over
+canonical JSON of every field except ``signature``, including a bound
+``machine_id``. Production private keys and operator tools stay private.
 """
 
 from __future__ import annotations
 
 import base64
-import secrets
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 from .license import (
+    EXPIRES_FORMAT,
     LICENSE_ALGORITHM,
-    LICENSE_VERSION,
-    TIMESTAMP_FORMAT,
+    PSS_SALT_LENGTH,
     LicenseDocument,
     canonical_json,
 )
-from .license import _utc_now
+from .machine import get_machine_id
 
 
 def _load_private_key(path: str | Path) -> rsa.RSAPrivateKey:
@@ -47,60 +38,57 @@ def _load_private_key(path: str | Path) -> rsa.RSAPrivateKey:
 
 def build_license_document(
     *,
-    app_id: str,
-    customer: str,
-    features: Optional[Dict[str, Any]] = None,
-    issued_at: Optional[str] = None,
-    expires_at: Optional[str] = None,
-    nonce: Optional[str] = None,
+    product: str,
+    licensee: str,
+    machine_id: Optional[str] = None,
+    email: str = "",
+    license_type: str = "standard",
+    expires: Optional[str] = None,
+    features: Optional[List[Any]] = None,
+    key_id: str = "v1",
+    organization: Optional[str] = None,
 ) -> LicenseDocument:
-    """Build an unsigned demo license document.
+    """Build an unsigned demo license document bound to a machine.
 
-    Defaults: ``issued_at`` is now, ``expires_at`` is approximately one year
-    from now (365 days), and ``nonce`` is 16 random bytes, base64url-encoded.
+    Defaults: ``machine_id`` is this computer's fingerprint, ``expires`` is
+    one year from today, ``license_type`` is ``standard``, ``key_id`` is
+    ``v1``.
     """
-    now = _utc_now()
-    if issued_at is None:
-        issued_at = now.strftime(TIMESTAMP_FORMAT)
-    if expires_at is None:
-        expires_at = (now + timedelta(days=365)).strftime(TIMESTAMP_FORMAT)
-    if nonce is None:
-        nonce = (
-            base64.urlsafe_b64encode(secrets.token_bytes(16))
-            .decode("ascii")
-            .rstrip("=")
-        )
+    if expires is None:
+        expires = (date.today() + timedelta(days=365)).strftime(EXPIRES_FORMAT)
+    else:
+        # Normalize / validate early.
+        expires = date.fromisoformat(expires).strftime(EXPIRES_FORMAT)
+    mid = (machine_id or get_machine_id()).strip()
     return LicenseDocument(
-        app_id=app_id,
-        issued_at=issued_at,
-        expires_at=expires_at,
-        customer=customer,
-        features=features or {},
-        nonce=nonce,
+        product=product,
+        licensee=licensee.strip(),
+        email=(email or "").strip(),
+        license_type=(license_type or "standard").strip().lower() or "standard",
+        expires=expires,
+        machine_id=mid,
+        features=list(features or []),
+        key_id=key_id,
+        organization=(organization.strip() if organization else None),
     )
 
 
 def sign_license_document(
     document: LicenseDocument, private_key_path: str | Path
 ) -> Dict[str, Any]:
-    """Sign a license document with a demo private key.
-
-    Returns the full envelope: ``payload``, base64 ``signature`` over the
-    canonical JSON form of the payload, plus ``algorithm`` and ``version``
-    fields that the verifier checks before verifying the signature.
-    """
+    """Sign a license document with a demo private key (PSS salt length 32)."""
     private_key = _load_private_key(private_key_path)
     payload = document.to_dict()
     signature = private_key.sign(
         canonical_json(payload),
         padding.PSS(
-            mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=PSS_SALT_LENGTH,
         ),
         hashes.SHA256(),
     )
-    return {
-        "payload": payload,
-        "signature": base64.b64encode(signature).decode("ascii"),
-        "algorithm": LICENSE_ALGORITHM,
-        "version": LICENSE_VERSION,
-    }
+    signed = dict(payload)
+    signed["signature"] = base64.b64encode(signature).decode("ascii")
+    # LICENSE_ALGORITHM is documentation only; not part of the signed blob.
+    _ = LICENSE_ALGORITHM
+    return signed

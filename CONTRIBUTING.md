@@ -3,8 +3,8 @@
 Arnas Verify is a deliberately small reference implementation. The bar for
 new features is high: please open an issue to discuss before writing a
 nontrivial pull request. Scope-expanding features (network activation,
-machine binding, plugin systems) will usually be declined — the point of
-this repo is to stay readable.
+plugin systems, replacing the documented fingerprint contract) will usually
+be declined — the point of this repo is to stay readable and protocol-stable.
 
 ## Development setup
 
@@ -32,7 +32,7 @@ python -m pip install -e ".[dev]"
 python -m pytest
 ```
 
-All 48 tests should pass before and after your change.
+All tests should pass before and after your change.
 
 ## Expectations
 

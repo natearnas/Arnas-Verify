@@ -19,7 +19,7 @@ example:
 - Signature verification bypass or downgrade.
 - Canonicalization ambiguity that lets two different payloads verify against
   one signature, or lets signer and verifier disagree about the signed bytes.
-- App-binding, expiry, or envelope-validation bypass.
+- Product-binding, machine-binding, expiry, or payload-validation bypass.
 - Crashes on untrusted input — the verifier must fail closed with a reason.
 
 ## Out of scope — not vulnerabilities
@@ -29,5 +29,5 @@ example:
   demo-signed license is the documented purpose of that key. The demo keypair
   is not the trust root of any Arnas Technologies product.
 - The documented threat-model exclusions in the README: binary patching of
-  the verifying application, system clock rollback, copying a valid license
-  between machines, and the absence of revocation.
+  the verifying application, system clock rollback, hardware/VM fingerprint
+  spoofing, and the absence of revocation.

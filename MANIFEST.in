@@ -2,6 +2,7 @@
 # (tests/conftest.py) and the demo material they resolve (demo_keys/), and the
 # README quick start references examples/ and scripts/.
 include tests/conftest.py
+include CHANGELOG.md CITATION.cff CODE_OF_CONDUCT.md COMMERCIAL-LICENSE.md CONTRIBUTING.md SECURITY.md SUPPORT.md
 graft demo_keys
 graft examples
 graft scripts

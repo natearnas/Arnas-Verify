@@ -29,10 +29,59 @@ The demo keypair in `demo_keys/` — including the **private** key — is
 committed on purpose so the examples and tests work out of the box. It
 confers no trust; see [demo_keys/README.md](demo_keys/README.md).
 
-## Quick start
+## Getting started
+
+Arnas Verify runs on **Windows, Linux, and macOS** — it is pure Python with a
+single dependency (`cryptography`, prebuilt wheels, no compiler needed), and
+the license-lookup convention has both Windows and POSIX paths built in.
+
+### 1. Prerequisites
+
+- Python 3.10 or newer (`python --version` to check; on some systems the
+  command is `python3` or `py`)
+- git
+- No administrator rights required.
+
+### 2. Set up an environment and install
+
+Windows (PowerShell):
+
+```powershell
+git clone https://github.com/natearnas/Arnas-Verify.git
+cd Arnas-Verify
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+Linux / macOS (bash):
 
 ```bash
+git clone https://github.com/natearnas/Arnas-Verify.git
+cd Arnas-Verify
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
+```
+
+To use the library in your own project without cloning, install straight
+from GitHub instead:
+
+```bash
+python -m pip install "git+https://github.com/natearnas/Arnas-Verify.git"
+```
+
+### 3. Verify the install
+
+```bash
+python -m pytest
+```
+
+Expect `48 passed`. Then verify the bundled example license:
+
+```bash
 arnas-verify --license examples/example_license.json --public-key demo_keys/public_key.pem --app-id demo_app
 ```
 
@@ -41,6 +90,28 @@ Expected output:
 ```text
 License valid for app 'demo_app'.
 ```
+
+### 4. Use your own keys
+
+```bash
+python demo_keys/generate_demo_keys.py     # fresh RSA keypair (overwrites the demo pair)
+python scripts/build_demo_license.py       # sign a new example license with it
+arnas-verify --license examples/example_license.json --public-key demo_keys/public_key.pem --app-id demo_app
+```
+
+In a real deployment, the private key never touches the shipped product or a
+public repository: issuance happens in a private signing authority, and only
+the public key ships with the application. See "Architecture and trust
+model" below.
+
+### 5. Troubleshooting
+
+- PowerShell refuses to activate the venv: run
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then retry.
+- `python` not found on Windows: try `py` (the Python launcher).
+- `cryptography` installs from a prebuilt wheel on all supported platforms —
+  if pip tries to compile it, your Python or pip is likely very old; upgrade
+  pip first.
 
 ## CLI usage
 
@@ -200,6 +271,13 @@ It cannot stop, by design:
 These are out of scope for this reference implementation; treat local
 verification as a honest-user convention, not DRM.
 
+One consequence worth spelling out: the demo keypair in `demo_keys/` —
+private key included — is intentionally public and carries no trust. A
+"forged" license signed with the demo private key demonstrates the threat
+model working as documented; it is not a vulnerability, and the demo keypair
+is not the trust root of any Arnas Technologies product. See
+[SECURITY.md](SECURITY.md) for what does count as a reportable issue.
+
 ## Development
 
 ```bash
@@ -212,12 +290,37 @@ python scripts/build_demo_license.py      # re-sign examples/example_license.jso
 ## Project layout
 
 ```text
-arnas_verify/       the installable package (verifier, locations, CLI)
-demo_keys/          intentionally committed demo keypair + warning README
-examples/           sample signed license document
-scripts/            demo license regeneration
-tests/              pytest suite (crypto, validation, CLI, locations)
+arnas_verify/         the installable package (verifier, locations, CLI)
+demo_keys/            intentionally committed demo keypair + warning README
+examples/             sample signed license document
+scripts/              demo license regeneration
+tests/                pytest suite (crypto, validation, CLI, locations)
+CHANGELOG.md          release history
+CITATION.cff          citation metadata
+CODE_OF_CONDUCT.md    community standards
+COMMERCIAL-LICENSE.md commercial licensing contact
+CONTRIBUTING.md       how to contribute
+SECURITY.md           vulnerability reporting policy
+SUPPORT.md            support expectations
 ```
+
+## Contributing
+
+Small fixes are welcome; for anything nontrivial, open an issue first — this
+repo deliberately stays minimal. See [CONTRIBUTING.md](CONTRIBUTING.md),
+including the licensing terms for contributions.
+
+## Support
+
+Provided as-is with no support obligation; GitHub Issues are answered
+best-effort. Commercial support is available from Arnas Technologies, LLC
+via <https://arnastech.com>. See [SUPPORT.md](SUPPORT.md).
+
+## Citation
+
+If you use Arnas Verify in academic work, please cite it —
+[CITATION.cff](CITATION.cff) has machine-readable metadata (GitHub renders a
+"Cite this repository" button from it).
 
 ## Licensing
 

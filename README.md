@@ -2,11 +2,12 @@
 
 [![Tests](https://github.com/natearnas/Arnas-Verify/actions/workflows/test.yml/badge.svg)](https://github.com/natearnas/Arnas-Verify/actions/workflows/test.yml)
 
-A **reference implementation** of local, offline, **machine-bound** signed
-license verification in Python. It shows how a desktop application validates a
-signed JSON license file against an embedded public key — enforcing signature
-integrity, product binding, **machine ID binding**, and expiry — with no
-network access. Published by [Arnas Technologies](https://arnastech.com).
+A **reference implementation** of local, offline, **computer-locked**
+(machine-bound) signed license verification in Python. It shows how a desktop
+application validates a signed JSON license file against an embedded public
+key — enforcing signature integrity, product binding, **one license per
+computer** (`machine_id`), and expiry — with no network access. Published by
+[Arnas Technologies](https://arnastech.com).
 
 ## What this is — and deliberately is not
 
@@ -15,8 +16,8 @@ This is:
 - A minimal, production-quality **verifier** library (`arnas_verify`).
 - A CLI (`arnas-verify`) for checking a license file and printing a machine ID.
 - The same licensing **protocol** used by Arnas Technologies desktop products:
-  flat signed JSON, RSA-PSS-SHA256 (PSS salt length 32), WMI hardware
-  fingerprint on Windows (with a portable fallback elsewhere).
+  flat signed JSON, RSA-PSS-SHA256 (PSS salt length 32), **computer-locked**
+  via machine fingerprint (WMI on Windows, portable fallback elsewhere).
 - Demo keys, a sample signed license, and a pytest suite.
 
 This is deliberately **not**:
@@ -28,8 +29,8 @@ This is deliberately **not**:
 - A license **issuance** or **entitlement-management** system. Arnas Verify
   does not record licenses issued, customers, or seat counts. Issuers keep
   that ledger themselves — CRM, database, or private tooling — separate from
-  this verifier. The verifier **does** enforce the `machine_id` claim that the
-  issuer embedded when signing.
+  this verifier. The verifier **does** enforce computer-locking: the
+  ``machine_id`` claim the issuer embedded when signing must match this PC.
 - A GUI or operator console for creating and signing licenses. Those belong
   in a private issuance workflow, not in this reference verifier.
 - A remote activation system. There is no server, no telemetry, no network
@@ -97,11 +98,15 @@ License valid for product 'demo_app' on this machine.
 
 ### 4. Customer → issuer workflow (real deployments)
 
+Computer-locked licensing works like this:
+
 1. On the target PC, run `arnas-verify --print-machine-id` (or an equivalent
-   button in your application) and send that ID to the issuer.
-2. The issuer signs a license whose `machine_id` field equals that value.
+   control in your application) and send that ID to the issuer.
+2. The issuer signs a license whose `machine_id` field equals that value —
+   **one license file per computer**.
 3. The customer installs the license file; the app verifies signature,
-   product, machine ID, and expiry offline.
+   product, machine ID, and expiry offline. Copying the file to another PC
+   fails the machine check.
 
 ### 5. Troubleshooting
 

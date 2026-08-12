@@ -19,7 +19,8 @@ example:
 - Signature verification bypass or downgrade.
 - Canonicalization ambiguity that lets two different payloads verify against
   one signature, or lets signer and verifier disagree about the signed bytes.
-- Product-binding, machine-binding, expiry, or payload-validation bypass.
+- Product-binding, **computer-lock / machine_id**, expiry, or payload-validation
+  bypass.
 - Crashes on untrusted input — the verifier must fail closed with a reason.
 
 ## Out of scope — not vulnerabilities

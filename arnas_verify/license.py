@@ -2,10 +2,11 @@
 
 Protocol (aligned with Arnas Technologies desktop product licensing)
 --------------------------------------------------------------------
-A license is a flat JSON object. The issuer signs every field except
-``signature`` with RSA-PSS-SHA256 (PSS salt length = 32). The shipped
-application verifies the signature with an embedded public key, then enforces
-``product`` binding, ``machine_id`` binding, and calendar expiry.
+A license is a flat JSON object, **computer-locked** to one machine. The
+issuer signs every field except ``signature`` with RSA-PSS-SHA256 (PSS salt
+length = 32). The shipped application verifies the signature with an
+embedded public key, then enforces ``product`` binding, ``machine_id``
+binding (one license per computer), and calendar expiry.
 
 Public/private split
 --------------------

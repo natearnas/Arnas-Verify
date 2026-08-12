@@ -334,4 +334,5 @@ teaching, personal projects, and evaluation — under the
 See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) and get in touch via
 <https://arnastech.com>.
 
-This summary is informational, not legal advice; the license text governs.
+This summary is informational, not legal advice; attorney review recommended.
+The license text governs.

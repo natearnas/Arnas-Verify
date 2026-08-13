@@ -51,8 +51,10 @@ def build_license_document(
     """Build an unsigned demo license document bound to a machine.
 
     Defaults: ``machine_id`` is this computer's fingerprint, ``expires`` is
-    one year from today, ``license_type`` is ``standard``, ``key_id`` is
-    ``v1``.
+    one year from today (a calendar date ``YYYY-MM-DD``, not “days of
+    runtime”). There is no perpetual/never-expires flag; use a far-future
+    date such as ``2100-01-01`` if you want that in practice. See the README
+    section on license duration.
     """
     if expires is None:
         expires = (date.today() + timedelta(days=365)).strftime(EXPIRES_FORMAT)

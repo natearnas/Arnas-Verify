@@ -113,7 +113,8 @@ Computer-locked licensing works like this:
    **one license file per computer**.
 3. The customer installs the license file; the app verifies signature,
    product, machine ID, and expiry offline. Copying the file to another PC
-   fails the machine check.
+   fails the machine check. How long the license lasts is the `expires`
+   date you signed in (see [License duration](#license-duration-and-perpetual-licenses)).
 
 ### 5. Troubleshooting
 
@@ -122,6 +123,9 @@ Computer-locked licensing works like this:
 - `python` not found on Windows: try `py`.
 - A license valid on one PC fails on another with `machine_id mismatch` —
   that is correct; request a re-issue for the new machine ID.
+- A license fails with `license expired on …` after the signed `expires`
+  date. That is an end date, not “days since first launch.” Issue a new
+  file to extend it. See [License duration](#license-duration-and-perpetual-licenses).
 
 ## CLI usage
 
@@ -173,12 +177,65 @@ A license is a **flat** JSON object. The signature covers every field except
 | `product` | string | Product this license is bound to |
 | `licensee` | string | Licensee display name |
 | `email` | string | Contact email (may be empty) |
-| `license_type` | string | e.g. `standard`, `academic`, `trial` |
-| `expires` | string | Calendar date `YYYY-MM-DD` |
+| `license_type` | string | Label for your records (e.g. `standard`, `academic`, `trial`, `perpetual`). The checker does not treat these words specially. |
+| `expires` | string | End date `YYYY-MM-DD`. Required. See [License duration](#license-duration-and-perpetual-licenses). |
 | `machine_id` | string | 32- or 64-char hex fingerprint of the target PC |
 | `features` | array | Feature flags / entitlements |
 | `key_id` | string | Optional key-rotation label (demo uses `v1`) |
 | `signature` | string | Base64 RSA-PSS-SHA256 over the canonical unsigned payload |
+
+## License duration and perpetual licenses
+
+Arnas Verify supports a license **end date**. Each license has a required
+`expires` field: a calendar date `YYYY-MM-DD` (for example `2027-06-01`).
+The checker refuses the file after that date, using the computer's clock.
+
+### How duration works
+
+You do **not** set “30 days of runtime.” You set an **end date** when you
+**issue** the license.
+
+- Want one year? Sign with `expires` = today plus 365 days. Want 90 days?
+  Same idea.
+- The demo helper (`arnas_verify.demo_issuance`), if you omit `expires`,
+  uses **one year from today**.
+- Changing duration later means issuing a **new signed license** with a new
+  `expires` date.
+
+Duration is an issuer-side choice, baked into the signed file. The public
+checker only enforces it.
+
+This reference does **not**:
+
+- Store hours or minutes — date only, not a timestamp.
+- Start counting when the customer first opens the app.
+- Include a grace period. After the end date, the check fails. A company
+  can add a warning window in their own application if they want.
+
+### Perpetual licenses
+
+There is no separate “never expires” switch. Every license must have an
+`expires` date. After that date, the checker rejects it.
+
+The usual way to issue a perpetual license is to pick a date so far out
+that it is “for practical purposes forever,” and still **computer-locked**.
+The committed example does exactly that: `expires` is `2100-01-01`. You can
+also set `license_type` to `perpetual` as a **label** for your records —
+the checker does not treat that word specially. It only looks at the date.
+
+That still means:
+
+- **One license, one computer.** Perpetual does not mean the file works on
+  every PC.
+- A hardware change still needs a new signed file (same far-future date,
+  new machine ID).
+- You cannot remotely switch off a perpetual copy in this repo (no online
+  revoke). You would issue a replacement with an earlier date, or ship a
+  new app with a new checking key.
+- Clock rollback can fake “still valid,” the same as any dated license.
+
+So perpetual is a business choice (far-future `expires`, and optionally
+`license_type: perpetual`), not a missing feature.
 
 **Machine fingerprint**
 
@@ -265,7 +322,9 @@ Offline verification stops:
 - **Tampered licenses** — any field edit invalidates the signature.
 - **Cross-product reuse** — wrong `product` fails.
 - **Copied licenses** — wrong `machine_id` fails on another computer.
-- **Expired licenses** — under an honest system clock.
+- **Expired licenses** — under an honest system clock. Duration is an end
+  date (`expires`), not a first-launch timer. See
+  [License duration](#license-duration-and-perpetual-licenses).
 
 It cannot stop, by design:
 

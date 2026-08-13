@@ -20,6 +20,13 @@ This is:
   via machine fingerprint (WMI on Windows, portable fallback elsewhere).
 - Demo keys, a sample signed license, and a pytest suite.
 
+In a real product, license checking runs **inside the application the
+customer starts** (call the library from your app, or equivalent). Do not
+rely on customers running the `arnas-verify` command themselves. This CLI
+is for developers and tests. When you ship, put **your own** checking key
+into the app at build time — not as a loose file they can replace. See
+[Deployment hardening](#deployment-hardening).
+
 This is deliberately **not**:
 
 - The live licensing system of any shipping product.
@@ -214,6 +221,9 @@ first, then machine-wide:
 Default filename: `license.json`.
 
 ## Deployment hardening
+
+First: the check lives in the shipped application (see above). Then harden
+how the key is stored and how verification is called.
 
 Arnas Verify is the **verifier protocol**. A shipping product should add
 operational hardening around it. Recommended practices:

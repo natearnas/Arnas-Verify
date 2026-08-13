@@ -15,9 +15,11 @@ This is:
 
 - A minimal, production-quality **verifier** library (`arnas_verify`).
 - A CLI (`arnas-verify`) for checking a license file and printing a machine ID.
-- The same licensing **protocol** used by Arnas Technologies desktop products:
-  flat signed JSON, RSA-PSS-SHA256 (PSS salt length 32), **computer-locked**
-  via machine fingerprint (WMI on Windows, portable fallback elsewhere).
+- The same licensing **protocol** used by Arnas Technologies desktop products,
+  including [Arnas Scope](https://arnastech.com/scope) deconvolution microscopy
+  software: flat signed JSON, RSA-PSS-SHA256 (PSS salt length 32),
+  **computer-locked** via machine fingerprint (WMI on Windows, portable
+  fallback elsewhere).
 - Demo keys, a sample signed license, and a pytest suite.
 
 In a real product, license checking runs **inside the application the
